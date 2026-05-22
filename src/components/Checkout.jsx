@@ -47,7 +47,7 @@ export default function Checkout() {
       deliveryAddress: formData.deliveryAddress
     };
     try {
-      const response = await axios.post('https://ths-egaz.onrender.com', payload);
+      const response = await axios.post('https://ths-egaz.onrender.com/api/orders', payload);
       
       if (response.data.success || response.status === 200 || response.status === 201) {
         alert('Order placed successfully!');
