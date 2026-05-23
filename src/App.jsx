@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Storefront from './components/StoreFront';
 import Checkout from './components/Checkout';
+import AdminStocker from './components/AdminStocker';
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Storefront />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/secret-manager-ths-99" element={<AdminStocker />} />
         </Routes>
       </div>
     </Router>
