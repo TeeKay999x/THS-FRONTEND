@@ -25,7 +25,7 @@ const AdminStocker = () => {
       const API_URL = "https://ths-egaz.onrender.com/api/products"; 
       
       // 🔑 MUST exactly match the value of ADMIN_SECRET_KEY inside your Render dashboard settings
-      const secretProductionKey = "ths_secret_2026"; 
+      const secretProductionKey = "ths_scret_2026"; 
 
       const response = await axios.post(API_URL, 
         {
