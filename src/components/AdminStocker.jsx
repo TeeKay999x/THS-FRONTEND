@@ -79,6 +79,7 @@ const AdminStocker = () => {
           <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Category:</label>
           <select name="category" value={formData.category} onChange={handleChange} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }}>
             <option value="vegetables">Vegetables</option>
+            <option value="gas">Gas</option>
             <option value="tubers">Tubers</option>
             <option value="grains">Grains</option>
             <option value="spices">Spices</option>
