@@ -1,126 +1,153 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import axios from 'axios';
 
-export default function Storefront() {
-  const [products, setProducts] = useState([]); // 💡 Holds data from database
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [selectedTiers, setSelectedTiers] = useState({});
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+const AdminStocker = () => {
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('vegetables'); // default matches schema enum
+  const [image, setImage] = useState('');
+  
+  // State for dynamic multiple tiers
+  const [options, setOptions] = useState([
+    { tier: '', price: '' } // Starts with one empty option row
+  ]);
 
-  // 📡 Fetch real-time products from the backend when the page loads
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get('https://ths-egaz.onrender.com/api/products');
-        setProducts(response.data);
-      } catch (error) {
-        console.error("Error loading products:", error);
-      } finally {
-        setLoading(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // Handle typing inside a specific tier or price row
+  const handleOptionChange = (index, e) => {
+    const updatedOptions = [...options];
+    updatedOptions[index][e.target.name] = e.target.value;
+    setOptions(updatedOptions);
+  };
+
+  // Add a new empty row for another pricing tier
+  const addOptionField = () => {
+    setOptions([...options, { tier: '', price: '' }]);
+  };
+
+  // Remove an option row if you misclick
+  const removeOptionField = (index) => {
+    if (options.length > 1) {
+      const updatedOptions = options.filter((_, i) => i !== index);
+      setOptions(updatedOptions);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const API_URL = "https://ths-egaz.onrender.com/api/products"; 
+      const secretProductionKey = "ths_secret_2026"; 
+
+      // Format options to ensure prices are explicitly numbers before sending
+      const formattedOptions = options.map(opt => ({
+        tier: opt.tier,
+        price: Number(opt.price)
+      }));
+
+      const productPayload = {
+        name,
+        category,
+        image,
+        options: formattedOptions,
+        isAvailable: true
+      };
+
+      const response = await axios.post(API_URL, productPayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': secretProductionKey
+        }
+      });
+
+      if (response.data.success) {
+        setMessage(`✅ Successfully uploaded: ${name} with ${options.length} pricing tiers!`);
+        setName('');
+        setCategory('vegetables');
+        setImage('');
+        setOptions([{ tier: '', price: '' }]); // Reset back to a single row
       }
-    };
-    fetchProducts();
-  }, []);
-
-  // Filter items based on active tab
-  const filteredProducts = products.filter(p => activeCategory === 'all' || p.category === activeCategory);
-
-  const handleTierChange = (productId, index) => {
-    setSelectedTiers(prev => ({ ...prev, [productId]: index }));
+    } catch (error) {
+      setMessage(`❌ Upload Failed: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const handleBuyNow = (product) => {
-    const chosenIndex = selectedTiers[product._id] || 0; // MongoDB uses _id
-    const selectedOption = product.options[chosenIndex];
-
-    const orderSummary = {
-      vegetableName: product.name,
-      quantity: selectedOption.tier,
-      totalPrice: selectedOption.price
-    };
-
-    navigate('/checkout', { state: orderSummary });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <header className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-green-700">THS GAS & VEGETABLE SHOP</h1>
-        <p className="text-gray-600 mt-2">Amadi-Ama Community, Port Harcourt</p>
-      </header>
-
-      {/* Category Filter Tabs */}
-      <div className="flex justify-center space-x-4 mb-8">
-        {['all', 'vegetables', 'gas'].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`px-6 py-2 rounded-full font-semibold capitalize transition ${
-              activeCategory === cat ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            {cat === 'all' ? 'Show All' : cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Grid Display */}
-      {filteredProducts.length === 0 ? (
-        <p className="text-center text-gray-500 mt-10">No items available at the moment.</p>
-      ) : (
-        <div className="grid md:grid-cols-3 sm:grid-cols-2 gap-6">
-          {filteredProducts.map((product) => {
-            const chosenIndex = selectedTiers[product._id] || 0;
-            const activeOption = product.options[chosenIndex];
-
-            return (
-              <div key={product._id} className="border rounded-xl shadow-sm hover:shadow-md transition overflow-hidden bg-white">
-                <img src={product.image} alt={product.name} className="h-48 w-full object-cover" />
-                <div className="p-4">
-                  <h3 className="text-xl font-bold text-gray-800">{product.name}</h3>
-                  
-                  {/* Bulk Tier Selector */}
-                  <div className="mt-3">
-                    <label className="block text-xs font-semibold text-gray-500 uppercase">Select Size</label>
-                    <select 
-                      onChange={(e) => handleTierChange(product._id, parseInt(e.target.value))}
-                      className="w-full mt-1 p-2 border rounded-md text-gray-700 bg-gray-50 focus:outline-green-500"
-                    >
-                      {product.options.map((opt, idx) => (
-                        <option key={idx} value={idx}>{opt.tier}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Dynamic Price Display */}
-                  <div className="mt-4 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs text-gray-400 block">Total Price</span>
-                      <span className="text-2xl font-black text-green-600">₦{activeOption?.price.toLocaleString()}</span>
-                    </div>
-                    <button
-                      onClick={() => handleBuyNow(product)}
-                      className="bg-green-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-green-700 transition"
-                    >
-                      Buy Now
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+    <div style={{ maxWidth: '500px', margin: '40px auto', padding: '30px', background: '#fff', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', fontFamily: 'Arial, sans-serif' }}>
+      <h2 style={{ textAlign: 'center', color: '#333', marginBottom: '20px' }}>🛒 THS Stocking Dashboard</h2>
+      
+      {message && (
+        <p style={{ padding: '12px', borderRadius: '5px', textAlign: 'center', fontWeight: 'bold', background: message.includes('✅') ? '#d4edda' : '#f8d7da', color: message.includes('✅') ? '#155724' : '#721c24' }}>
+          {message}
+        </p>
       )}
+      
+      <form onSubmit={handleSubmit}>
+        {/* Item Name */}
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Item Name:</label>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="e.g. Cooking Gas, Fresh Ugwu" style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+        </div>
+
+        {/* Category Setup */}
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Category:</label>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }}>
+            <option value="vegetables">Vegetables</option>
+            <option value="gas">Gas</option>
+          </select>
+        </div>
+
+        {/* Image Link */}
+        <div style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Image URL:</label>
+          <input type="text" value={image} onChange={(e) => setImage(e.target.value)} required placeholder="https://example.com/image.png" style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+        </div>
+
+        {/* Dynamic Quantity Tiering & Pricing Container */}
+        <div style={{ padding: '15px', background: '#f9f9f9', borderRadius: '5px', marginBottom: '20px', border: '1px dashed #ddd' }}>
+          <h4 style={{ margin: '0 0 15px 0', color: '#007bff' }}>Quantity & Price Setting</h4>
+          
+          {options.map((option, index) => (
+            <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
+              
+              {/* Tier Input */}
+              <div style={{ flex: 2 }}>
+                <input type="text" name="tier" value={option.tier} onChange={(e) => handleOptionChange(index, e)} required placeholder="e.g., 1kg, 5kg, Refill" style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+              </div>
+              
+              {/* Price Input */}
+              <div style={{ flex: 1.5 }}>
+                <input type="number" name="price" value={option.price} onChange={(e) => handleOptionChange(index, e)} required placeholder="Price ₦" style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Remove Row Button */}
+              {options.length > 1 && (
+                <button type="button" onClick={() => removeOptionField(index)} style={{ padding: '8px 12px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+
+          {/* Add Option Row Button */}
+          <button type="button" onClick={addOptionField} style={{ marginTop: '5px', padding: '6px 12px', background: '#007bff', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
+            ➕ Add Another Pricing Tier
+          </button>
+        </div>
+
+        <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '16px', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+          {loading ? 'Uploading Stock...' : 'Upload Product to Database'}
+        </button>
+      </form>
     </div>
   );
-}
+};
+
+export default AdminStocker;
